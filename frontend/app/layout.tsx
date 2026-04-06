@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Lora } from "next/font/google";
 import "./globals.css";
-import { ClerkProvider } from '@clerk/nextjs'
-import ConvexClientProvider from '@/components/ConvexClientProvider'
+import { ClerkProvider } from "@clerk/nextjs";
+import ConvexClientProvider from "@/components/ConvexClientProvider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -10,9 +11,9 @@ const geistSans = Geist({
 });
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-})
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 const lora = Lora({
   variable: "--font-lora",
@@ -37,8 +38,10 @@ export default function RootLayout({
             font-family: var(--font-lora), Georgia, serif;
           }
         `}</style>
-        <ClerkProvider>
-          <ConvexClientProvider>{children}</ConvexClientProvider>
+        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
+          <TooltipProvider>
+            <ConvexClientProvider>{children}</ConvexClientProvider>
+          </TooltipProvider>
         </ClerkProvider>
       </body>
     </html>

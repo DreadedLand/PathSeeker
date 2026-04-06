@@ -9,6 +9,7 @@
  */
 
 import type * as messages from "../messages.js";
+import type * as pathseeker from "../pathseeker.js";
 import type * as tasks from "../tasks.js";
 
 import type {
@@ -19,6 +20,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   messages: typeof messages;
+  pathseeker: typeof pathseeker;
   tasks: typeof tasks;
 }>;
 

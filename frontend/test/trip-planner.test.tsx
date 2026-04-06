@@ -4,6 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TripPlanner } from "@/components/trip-planner";
 
+vi.mock("convex/react", async () => {
+  const actual = await vi.importActual<typeof import("convex/react")>("convex/react");
+  return {
+    ...actual,
+    useMutation: () => vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 type MediaRecorderEvent = Event | { data: Blob };
 
 class MediaRecorderMock {
