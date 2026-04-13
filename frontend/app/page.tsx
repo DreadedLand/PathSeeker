@@ -23,12 +23,6 @@ export default function Home() {
             <Link href="/workspace" className={primaryLinkClass}>
               Open Workspace
             </Link>
-            <Link href="/sign-in" className={outlineLinkClass}>
-              Sign in
-            </Link>
-            <Link href="/sign-up" className={outlineLinkClass}>
-              Create account
-            </Link>
           </CardContent>
         </Card>
       </main>
