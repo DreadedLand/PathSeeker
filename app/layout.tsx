@@ -23,6 +23,10 @@ const lora = Lora({
 export const metadata: Metadata = {
   title: "PathSeeker",
   description: "Voice and text route planning with AI extraction, transcription, and Google route optimization.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
