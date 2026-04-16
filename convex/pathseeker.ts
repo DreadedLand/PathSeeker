@@ -106,3 +106,57 @@ export const removeSavedPlace = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+export const listSavedPresets = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const rows = await ctx.db
+      .query("savedPresets")
+      .withIndex("by_user", (q) => q.eq("userToken", identity.tokenIdentifier))
+      .collect();
+
+    return rows.sort((a, b) => b._creationTime - a._creationTime);
+  },
+});
+
+export const addSavedPreset = mutation({
+  args: {
+    name: v.string(),
+    prompt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+
+    const name = args.name.trim();
+    const prompt = args.prompt.trim();
+    if (!name || !prompt) {
+      throw new Error("Name and prompt are required");
+    }
+
+    return await ctx.db.insert("savedPresets", {
+      userToken: identity.tokenIdentifier,
+      name,
+      prompt,
+    });
+  },
+});
+
+export const removeSavedPreset = mutation({
+  args: {
+    id: v.id("savedPresets"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+    const preset = await ctx.db.get(args.id);
+
+    if (!preset || preset.userToken !== identity.tokenIdentifier) {
+      throw new Error("Not found");
+    }
+
+    await ctx.db.delete(args.id);
+  },
+});

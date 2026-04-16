@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { RouteLocationBias, RoutePlanResponse } from "@/lib/types";
 import { api } from "@/convex/_generated/api";
+import { useSearchParams } from "next/navigation";
 
 type ApiFailure = {
   error?: {
@@ -68,8 +69,9 @@ function extractApiError(payload: unknown, fallback: string) {
 }
 
 export function TripPlanner() {
+  const searchParams = useSearchParams();
   const [homeAddress, setHomeAddress] = useState("");
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(searchParams.get("prompt") ?? "");
   const [result, setResult] = useState<RoutePlanResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] =

@@ -84,6 +84,14 @@ export function AppShell({ children }: AppShellProps) {
                     Saved Places
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link href="/workspace/saved-presets" />}
+                    isActive={pathname === "/workspace/saved-presets"}
+                  >
+                    Saved Presets
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

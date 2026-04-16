@@ -37,4 +37,10 @@ export default defineSchema({
     name: v.string(),
     address: v.string(),
   }).index("by_user", ["userToken"]),
+
+  savedPresets: defineTable({
+  userToken: v.string(),
+  name: v.string(),
+  prompt: v.string(),
+  }).index("by_user", ["userToken"]),
 });
