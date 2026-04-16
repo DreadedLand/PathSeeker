@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 
-import { api } from "@convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -47,14 +47,20 @@ export function HistoryView() {
         <Card key={item._id} className="border-border/70">
           <CardHeader className="flex flex-row items-start justify-between gap-3">
             <div className="space-y-1">
-              <CardTitle className="text-base">{item.totalDurationText}</CardTitle>
+              <CardTitle className="text-base">
+                {item.totalDurationText}
+              </CardTitle>
               <p className="text-xs text-muted-foreground">
                 {formatTime(item._creationTime)}
               </p>
             </div>
             {item.arrivalEstimate ? (
               <Badge variant="outline">
-                ETA {new Date(item.arrivalEstimate).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                ETA{" "}
+                {new Date(item.arrivalEstimate).toLocaleTimeString([], {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
               </Badge>
             ) : null}
           </CardHeader>

@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { RouteLocationBias, RoutePlanResponse } from "@/lib/types";
-import { api } from "@convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 type ApiFailure = {
   error?: {

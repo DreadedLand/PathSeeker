@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 
-import { api } from "@convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,11 +67,17 @@ export function SavedPlacesView() {
             <div className="flex items-center gap-2">
               <Button
                 type="submit"
-                disabled={isSaving || name.trim().length === 0 || address.trim().length === 0}
+                disabled={
+                  isSaving ||
+                  name.trim().length === 0 ||
+                  address.trim().length === 0
+                }
               >
                 {isSaving ? "Saving..." : "Save Place"}
               </Button>
-              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+              {error ? (
+                <p className="text-sm text-destructive">{error}</p>
+              ) : null}
             </div>
           </form>
         </CardContent>
