@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { RouteLocationBias, RoutePlanResponse } from "@/lib/types";
 import { api } from "@/convex/_generated/api";
 import { useSearchParams } from "next/navigation";
+import { useQuery } from "convex/react";
 
 type ApiFailure = {
   error?: {
@@ -85,6 +86,7 @@ export function TripPlanner() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const savedPlaces = useQuery(api.pathseeker.listSavedPlaces);
 
   const arrivalTime = useMemo(
     () => formatArrivalTime(result?.route.arrivalEstimate),
@@ -294,10 +296,9 @@ export function TripPlanner() {
         },
         body: JSON.stringify({
           prompt,
-          ...(homeAddress.trim().length > 0
-            ? { homeAddress: homeAddress.trim() }
-            : {}),
+          ...(homeAddress.trim().length > 0 ? { homeAddress: homeAddress.trim() } : {}),
           ...(locationBias ? { locationBias } : {}),
+          ...(savedPlaces && savedPlaces.length > 0 ? { savedPlaces } : {}),
         }),
       });
 

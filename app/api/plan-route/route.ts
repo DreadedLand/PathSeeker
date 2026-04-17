@@ -14,8 +14,15 @@ export async function handlePlanRouteRequest(input: unknown) {
   if (!parsedRequest.success) {
     throw new ApiRouteError(400, "BAD_REQUEST", "A valid prompt is required.");
   }
+  let prompt = parsedRequest.data.prompt;
 
-  const parsed = await extractTripDetails(parsedRequest.data.prompt);
+  if (parsedRequest.data.savedPlaces?.length) {
+    for (const place of parsedRequest.data.savedPlaces) {
+      const pattern = new RegExp(`\\b${place.name}\\b`, "gi");
+      prompt = prompt.replace(pattern, `${place.name} (${place.address})`);
+    }
+  }
+  const parsed = await extractTripDetails(prompt);
 
   if (parsed.stops.length < 2) {
     throw new ApiRouteError(400, "VALIDATION_ERROR", "At least two stops are required.");
