@@ -1,4 +1,12 @@
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  AiChat01Icon,
+  Location01Icon,
+  MapsIcon,
+  Navigation03Icon,
+  TimeQuarterPassIcon,
+} from "@hugeicons/core-free-icons";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -20,13 +28,14 @@ export default function Home() {
               <span className="text-primary"> Natural Language</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Describe your errands in plain language. PathSeeker extracts stops, optimizes your route, and gives you a traffic-aware ETA.
+              Describe your errands in plain language. PathSeeker extracts stops &bull; optimizes your route &bull; gives you a traffic-aware ETA.
             </p>
           </div>
           
           <div className="flex gap-3 justify-center flex-wrap">
             <Link href="/workspace" className={primaryLinkClass}>
-              Start Planning →
+              Start Planning
+              <HugeiconsIcon icon={Navigation03Icon} strokeWidth={2} className="ml-1 size-4" />
             </Link>
             <Link href="/workspace" className={outlineLinkClass}>
               Learn More
@@ -39,24 +48,31 @@ export default function Home() {
           {[
             {
               title: "Natural Language Input",
-              description: "Just describe your errands in plain language - no addresses needed."
+              description: "Just describe your errands in plain language. No addresses needed.",
+              icon: AiChat01Icon,
             },
             {
               title: "AI-Powered Extraction",
-              description: "Automatically extracts stops and resolves saved places."
+              description: "Automatically extracts stops and resolves saved places.",
+              icon: Location01Icon,
             },
             {
               title: "Smart Route Optimization",
-              description: "Optimizes order for efficiency while considering traffic patterns."
+              description: "Optimizes order for efficiency while considering traffic patterns.",
+              icon: MapsIcon,
             },
             {
               title: "Real-Time ETAs",
-              description: "Get accurate arrival times and traffic-aware duration estimates."
+              description: "Get accurate arrival times and traffic-aware duration estimates.",
+              icon: TimeQuarterPassIcon,
             }
           ].map((feature, idx) => (
             <Card key={idx} className="border-border/70 bg-card/50 hover:bg-card/70 transition-colors">
               <CardHeader>
-                <CardTitle className="text-base">{feature.title}</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <HugeiconsIcon icon={feature.icon} strokeWidth={2} className="size-4 text-primary" />
+                  {feature.title}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">{feature.description}</p>
