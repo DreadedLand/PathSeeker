@@ -1,5 +1,15 @@
 import { SavedPresetsView } from "@/components/saved-presets-view";
 
 export default function SavedPresetsPage() {
-  return <SavedPresetsView />;
+  return (
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <div className="relative overflow-hidden rounded-xl border border-border/60 bg-primary px-6 py-8 text-primary-foreground">
+        <div className="relative z-10">
+          <h1 className="text-3xl font-semibold tracking-tight">Saved Presets</h1>
+          <p className="mt-1 text-sm opacity-80">One-tap trip starters. Hit Start Trip on any preset to jump straight into planning.</p>
+        </div>
+      </div>
+      <SavedPresetsView />
+    </main>
+  );
 }

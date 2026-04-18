@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { SignOutButton, UserButton, useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
-
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -128,10 +128,12 @@ export function AppShell({ children }: AppShellProps) {
       <SidebarInset className="bg-background">
         <header className="sticky top-0 z-10 flex h-12 items-center border-b border-border/60 bg-background/90 px-3 backdrop-blur md:px-4">
           <SidebarTrigger />
-          <Separator className="mx-2 h-5 w-px" />
-          <p className="text-xs text-muted-foreground">
+          <p className="ml-3 text-xs text-muted-foreground">
             Minimal, traffic-aware route planning.
           </p>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
         <div className="mx-auto w-full max-w-6xl px-3 py-4 md:px-6 md:py-6">
           {children}

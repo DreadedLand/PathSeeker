@@ -35,7 +35,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} ${lora.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              const t = localStorage.getItem('theme');
+              if (t === 'dark') document.documentElement.classList.add('dark');
+            `,
+          }}
+        />
+      </head>
       <body className="antialiased" style={{ fontFamily: "var(--font-geist-sans), sans-serif" }}>
         <style>{`
           h1, h2, h3, h4, h5, h6 {
