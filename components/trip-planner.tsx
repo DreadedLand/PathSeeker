@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +33,23 @@ type ReverseGeocodeResponse = {
 };
 
 const homeAddressStorageKey = "pathseeker.home-address";
+const preferredRecordingMimeTypes = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+  "audio/ogg;codecs=opus",
+  "audio/ogg",
+];
+const minimumRecordedAudioBytes = 1024;
+
+function getFileExtensionFromMimeType(mimeType: string) {
+  const normalized = mimeType.split(";")[0].trim().toLowerCase();
+  if (normalized.includes("wav")) return "wav";
+  if (normalized.includes("mpeg") || normalized.includes("mp3")) return "mp3";
+  if (normalized.includes("mp4") || normalized.includes("m4a")) return "mp4";
+  if (normalized.includes("ogg")) return "ogg";
+  return "webm";
+}
 
 function getBrowserStorage() {
   if (typeof window === "undefined") return null;
@@ -60,7 +80,6 @@ export function TripPlanner() {
   const [homeAddress, setHomeAddress] = useState("");
   const [prompt, setPrompt] = useState(searchParams.get("prompt") ?? "");
   const [result, setResult] = useState<RoutePlanResponse | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState<RouteLocationBias | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [isPlanning, setIsPlanning] = useState(false);
@@ -118,7 +137,7 @@ export function TripPlanner() {
               setHomeAddress(payload.address);
             }
           } catch (error) {
-            setErrorMessage(error instanceof Error ? error.message : "Could not resolve your current location.");
+            toast.error(error instanceof Error ? error.message : "Could not resolve your current location.");
           } finally {
             setIsLocating(false);
             resolve(nextLocation);
@@ -131,19 +150,34 @@ export function TripPlanner() {
   }
 
   async function uploadAudio(blob: Blob) {
-    const extension = blob.type.includes("wav") ? "wav" : "webm";
-    const file = new File([blob], `recording.${extension}`, { type: blob.type || "audio/webm" });
+    if (blob.size < minimumRecordedAudioBytes) {
+      toast.error("Recording was too short. Please try again.");
+      return;
+    }
+
+    const mimeType = blob.type || "audio/webm";
+    const extension = getFileExtensionFromMimeType(mimeType);
+    const file = new File([blob], `recording.${extension}`, { type: mimeType });
     const formData = new FormData();
     formData.append("audio", file);
     setIsTranscribing(true);
-    setErrorMessage(null);
     try {
       const response = await fetch("/api/transcribe", { method: "POST", body: formData });
       const payload = await response.json();
-      if (!response.ok) throw new Error(extractApiError(payload, "Could not transcribe audio."));
-      setPrompt(payload.transcript ?? "");
+      if (!response.ok) {
+        throw new Error(extractApiError(payload, "Could not transcribe audio."));
+      }
+
+      if (!payload || typeof payload !== "object" || !("transcript" in payload)) {
+        setPrompt("");
+        return;
+      }
+
+      const transcript = (payload as { transcript?: string }).transcript;
+      setPrompt(typeof transcript === "string" ? transcript : "");
+      toast.success("Transcription ready.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not transcribe audio.");
+      toast.error(error instanceof Error ? error.message : "Could not transcribe audio.");
     } finally {
       setIsTranscribing(false);
     }
@@ -151,15 +185,20 @@ export function TripPlanner() {
 
   async function startRecording() {
     if (!navigator.mediaDevices?.getUserMedia) {
-      setErrorMessage("This browser does not support microphone capture.");
+      toast.error("This browser does not support microphone capture.");
       return;
     }
-    setErrorMessage(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       chunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
+
+      const preferredMimeType = preferredRecordingMimeTypes.find((mimeType) =>
+        MediaRecorder.isTypeSupported(mimeType),
+      );
+      const recorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream);
       recorderRef.current = recorder;
       recorder.addEventListener("dataavailable", (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -171,25 +210,49 @@ export function TripPlanner() {
           streamRef.current.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
         }
+
+        if (blob.size < minimumRecordedAudioBytes) {
+          toast.error("Recording was too short. Please try again.");
+          return;
+        }
+
         void uploadAudio(blob);
       });
-      recorder.start();
+
+      recorder.start(500);
       setIsRecording(true);
     } catch {
-      setErrorMessage("Microphone permission denied or unavailable.");
+      toast.error("Microphone permission denied or unavailable.");
     }
   }
 
   function stopRecording() {
-    recorderRef.current?.stop();
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+    }
     recorderRef.current = null;
     setIsRecording(false);
   }
 
+  useEffect(() => {
+    return () => {
+      if (recorderRef.current && recorderRef.current.state !== "inactive") {
+        try {
+          recorderRef.current.stop();
+        } catch {
+          // no-op
+        }
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, []);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsPlanning(true);
-    setErrorMessage(null);
     setResult(null);
     try {
       let locationBias = currentLocation;
@@ -208,6 +271,7 @@ export function TripPlanner() {
       if (!response.ok) throw new Error(extractApiError(payload, "Could not plan route."));
       const routeResult = payload as RoutePlanResponse;
       setResult(routeResult);
+      toast.success("Route planned.");
       await addHistory({
         prompt: prompt.trim(),
         homeAddress: homeAddress.trim().length > 0 ? homeAddress.trim() : undefined,
@@ -219,7 +283,7 @@ export function TripPlanner() {
         originLabel: routeResult.route.originLabel,
       });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not plan route.");
+      toast.error(error instanceof Error ? error.message : "Could not plan route.");
     } finally {
       setIsPlanning(false);
     }
@@ -280,7 +344,7 @@ export function TripPlanner() {
                   className="bg-background/70"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Type vague stops — PathSeeker resolves them using your location and saved places.
+                  Type vague stops, and PathSeeker resolves them using your location and saved places.
                 </p>
               </div>
 
@@ -291,29 +355,37 @@ export function TripPlanner() {
                   onClick={isRecording ? stopRecording : startRecording}
                   disabled={isTranscribing || isPlanning || isLocating}
                 >
-                  {isRecording ? "⏹ Stop Recording" : "🎙 Record Voice"}
+                  {isRecording ? "Stop Recording" : "Record Voice"}
                 </Button>
                 <Button
                   type="submit"
                   disabled={isPlanning || isTranscribing || isLocating || prompt.trim().length === 0}
                   className="flex-1 sm:flex-none"
                 >
-                  {isPlanning ? "Planning Route..." : "Plan Route →"}
+                  {isPlanning ? (
+                    "Planning Route..."
+                  ) : (
+                    <>
+                      Plan Route
+                      <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4" />
+                    </>
+                  )}
                 </Button>
               </div>
 
-              {(isTranscribing || isPlanning || isLocating) && (
+              {(isRecording || isTranscribing || isPlanning || isLocating) && (
                 <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
                   <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
-                  {isTranscribing ? "Transcribing audio..." : isLocating ? "Getting location..." : "Planning route..."}
+                  {isPlanning
+                    ? "Planning route..."
+                    : isLocating
+                      ? "Getting location..."
+                      : isRecording
+                        ? "Recording audio..."
+                        : "Transcribing audio..."}
                 </div>
               )}
 
-              {errorMessage && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  {errorMessage}
-                </div>
-              )}
             </form>
           </CardContent>
         </Card>
@@ -395,7 +467,7 @@ export function TripPlanner() {
               </div>
               <div className="rounded-lg border border-border/60 bg-muted/40 px-4 py-3">
                 <p className="text-xs text-muted-foreground">Estimated Arrival</p>
-                <p className="text-2xl font-semibold">{arrivalTime ?? "—"}</p>
+                <p className="text-2xl font-semibold">{arrivalTime ?? "N/A"}</p>
               </div>
               {result.parsed.deadline && (
                 <div className="rounded-lg border border-border/60 bg-primary/10 px-4 py-3">

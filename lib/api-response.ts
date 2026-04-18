@@ -30,7 +30,8 @@ export function handleRouteError(error: unknown) {
   }
 
   if (error instanceof Error) {
-    return jsonError(500, "INTERNAL_ERROR", error.message);
+    console.error("[api-error]", error);
+    return jsonError(500, "INTERNAL_ERROR", "Internal server error.");
   }
 
   return jsonError(500, "INTERNAL_ERROR", "An unknown error occurred.");

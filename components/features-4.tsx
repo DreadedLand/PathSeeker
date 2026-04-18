@@ -43,29 +43,41 @@ export default function Features() {
   ];
 
   return (
-    <section className="py-12 md:py-20">
-      <div className="mx-auto max-w-5xl space-y-8 px-6 md:space-y-16">
-        <div className="relative z-10 mx-auto max-w-2xl space-y-6 text-center md:space-y-8">
-          <h2 className="text-balance text-4xl font-medium lg:text-5xl">Built for daily multi-stop planning</h2>
-          <p className="text-muted-foreground">
-            Everything needed for reliable route execution &bull; from natural language to optimized stop ordering and
+    <section className="pt-2 pb-12 md:pb-16">
+      <div className="px-6 md:px-10">
+        <div className="mx-auto max-w-2xl space-y-5 py-4 text-center md:space-y-6 md:py-6">
+          <h2
+            className="font-serif text-balance text-3xl font-medium lg:text-4xl"
+            style={{ fontFamily: "var(--font-lora), Georgia, serif" }}
+          >
+            Built for daily multi-stop planning
+          </h2>
+          <p className="text-sm text-[#69635d] md:text-base">
+            Everything needed for reliable route execution, from natural language to optimized stop ordering and
             realistic ETAs.
           </p>
         </div>
 
-        <div className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="overflow-hidden rounded-xl border border-[#d9d4cb] bg-[#d9d4cb]">
+          <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <div
+            <article
               key={item.title}
-              className="space-y-2 rounded-xl border border-border/70 bg-card/60 p-6 transition-colors hover:bg-card"
+              className="space-y-2.5 bg-[#f8f7f4] p-5 transition-colors hover:bg-[#f3f0ea] md:p-6"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-[#25201c]">
                 <HugeiconsIcon icon={item.icon} strokeWidth={2} className="size-4" />
-                <h3 className="text-sm font-medium">{item.title}</h3>
+                <h3
+                  className="font-serif text-[13px] font-medium tracking-tight md:text-sm"
+                  style={{ fontFamily: "var(--font-lora), Georgia, serif" }}
+                >
+                  {item.title}
+                </h3>
               </div>
-              <p className="text-sm text-muted-foreground">{item.description}</p>
-            </div>
+              <p className="text-[13px] leading-relaxed text-[#69635d] md:text-sm">{item.description}</p>
+            </article>
           ))}
+          </div>
         </div>
       </div>
     </section>

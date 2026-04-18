@@ -3,6 +3,7 @@ import { Inter, Lora } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({
@@ -31,20 +32,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${lora.variable}`}>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              const t = localStorage.getItem('theme');
-              if (t === 'dark') document.documentElement.classList.add('dark');
-            `,
-          }}
-        />
-      </head>
+      <head />
       <body className="antialiased">
         <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
           <TooltipProvider>
-            <ConvexClientProvider>{children}</ConvexClientProvider>
+            <ConvexClientProvider>
+              {children}
+              <Toaster />
+            </ConvexClientProvider>
           </TooltipProvider>
         </ClerkProvider>
       </body>

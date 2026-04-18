@@ -5,8 +5,18 @@ import { getAiGatewayConfig } from "@/lib/env";
 import { computeOptimizedRoute } from "@/lib/providers/google-routes";
 import { resolveRouteStops } from "@/lib/providers/stop-resolver";
 import { extractTripDetails } from "@/lib/providers/trip-parser";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import {
+  enforceMaxContentLength,
+  enforceSameOrigin,
+  requireAuthenticatedRequest,
+} from "@/lib/request-security";
 import { planRouteRequestSchema } from "@/lib/schemas/trip";
 import type { RoutePlanResponse } from "@/lib/types";
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export async function handlePlanRouteRequest(input: unknown) {
   const parsedRequest = planRouteRequestSchema.safeParse(input);
@@ -18,7 +28,9 @@ export async function handlePlanRouteRequest(input: unknown) {
 
   if (parsedRequest.data.savedPlaces?.length) {
     for (const place of parsedRequest.data.savedPlaces) {
-      const pattern = new RegExp(`\\b${place.name}\\b`, "gi");
+      const escapedName = escapeRegExp(place.name.trim());
+      if (!escapedName) continue;
+      const pattern = new RegExp(escapedName, "gi");
       prompt = prompt.replace(pattern, `${place.name} (${place.address})`);
     }
   }
@@ -64,6 +76,15 @@ export async function handlePlanRouteRequest(input: unknown) {
 
 export async function POST(request: Request) {
   try {
+    const userId = await requireAuthenticatedRequest();
+    enforceSameOrigin(request);
+    enforceRateLimit({
+      key: `plan-route:${userId}`,
+      maxRequests: 20,
+      windowMs: 60_000,
+    });
+    enforceMaxContentLength(request, 64 * 1024);
+
     const body = await request.json();
     const data = await handlePlanRouteRequest(body);
 

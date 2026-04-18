@@ -1,11 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { SignOutButton, UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -20,7 +17,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
-  SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
@@ -34,14 +30,13 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <SidebarProvider defaultOpen>
-      <Sidebar variant="inset">
+      <Sidebar variant="sidebar">
         <SidebarHeader className="gap-3 px-2 py-3">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 render={<Link href="/workspace" />}
                 size="lg"
-                isActive={pathname.startsWith("/workspace")}
               >
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm font-medium">
@@ -97,13 +92,12 @@ export function AppShell({ children }: AppShellProps) {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter className="gap-3 px-2 py-3">
-          <SidebarSeparator />
-          <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2 py-2">
+          <div className="flex items-center justify-between gap-2 px-2 py-2">
             <div className="flex min-w-0 items-center gap-2">
               <UserButton
                 appearance={{
                   elements: {
-                    avatarBox: "size-8 ring-1 ring-border",
+                    avatarBox: "size-8",
                   },
                 }}
               />
@@ -116,24 +110,16 @@ export function AppShell({ children }: AppShellProps) {
                 </p>
               </div>
             </div>
-            <SignOutButton>
-              <Button variant="ghost" size="sm" aria-label="Sign out">
-                Sign out
-              </Button>
-            </SignOutButton>
           </div>
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
       <SidebarInset className="bg-background">
         <header className="sticky top-0 z-10 flex h-12 items-center border-b border-border/60 bg-background/90 px-3 backdrop-blur md:px-4">
-          <SidebarTrigger />
+          <SidebarTrigger className="border-0 shadow-none ring-0 focus-visible:ring-0" />
           <p className="ml-3 text-xs text-muted-foreground">
             Minimal, traffic-aware route planning.
           </p>
-          <div className="ml-auto">
-            <ThemeToggle />
-          </div>
         </header>
         <div className="mx-auto w-full max-w-6xl px-3 py-4 md:px-6 md:py-6">
           {children}

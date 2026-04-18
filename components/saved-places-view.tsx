@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function SavedPlacesView() {
+  const router = useRouter();
   const places = useQuery(api.pathseeker.listSavedPlaces);
   const addSavedPlace = useMutation(api.pathseeker.addSavedPlace);
   const removeSavedPlace = useMutation(api.pathseeker.removeSavedPlace);
@@ -17,11 +20,9 @@ export function SavedPlacesView() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
     setIsSaving(true);
 
     try {
@@ -31,8 +32,9 @@ export function SavedPlacesView() {
       });
       setName("");
       setAddress("");
+      toast.success("Place saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save place.");
+      toast.error(err instanceof Error ? err.message : "Could not save place.");
     } finally {
       setIsSaving(false);
     }
@@ -64,7 +66,7 @@ export function SavedPlacesView() {
                 placeholder="123 Main St, Evanston, IL"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="submit"
                 disabled={
@@ -75,9 +77,6 @@ export function SavedPlacesView() {
               >
                 {isSaving ? "Saving..." : "Save Place"}
               </Button>
-              {error ? (
-                <p className="text-sm text-destructive">{error}</p>
-              ) : null}
             </div>
           </form>
         </CardContent>
@@ -98,23 +97,38 @@ export function SavedPlacesView() {
             places.map((place) => (
               <div
                 key={place._id}
-                className="flex items-center justify-between gap-3 rounded-md border border-border/70 px-3 py-2"
+                className="flex flex-col gap-3 rounded-md border border-border/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{place.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {place.address}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    void removeSavedPlace({ id: place._id });
-                  }}
-                >
-                  Remove
-                </Button>
+                <div className="flex items-center gap-2 sm:justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      router.push(`/workspace?prompt=${encodeURIComponent(`Take me to ${place.name}`)}`);
+                    }}
+                  >
+                    Use Place
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      void removeSavedPlace({ id: place._id })
+                        .then(() => {
+                          toast.success("Place removed.");
+                        })
+                        .catch((err: unknown) => {
+                          toast.error(err instanceof Error ? err.message : "Could not remove place.");
+                        });
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
               </div>
             ))
           )}

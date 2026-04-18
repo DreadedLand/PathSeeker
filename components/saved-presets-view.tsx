@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
 
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 
 export function SavedPresetsView() {
@@ -20,12 +20,10 @@ export function SavedPresetsView() {
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
     setIsSaving(true);
 
     try {
@@ -35,8 +33,9 @@ export function SavedPresetsView() {
       });
       setName("");
       setPrompt("");
+      toast.success("Preset saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save preset.");
+      toast.error(err instanceof Error ? err.message : "Could not save preset.");
     } finally {
       setIsSaving(false);
     }
@@ -81,9 +80,6 @@ export function SavedPresetsView() {
               >
                 {isSaving ? "Saving..." : "Save Preset"}
               </Button>
-              {error ? (
-                <p className="text-sm text-destructive">{error}</p>
-              ) : null}
             </div>
           </form>
         </CardContent>
@@ -123,7 +119,13 @@ export function SavedPresetsView() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      void removeSavedPreset({ id: preset._id });
+                      void removeSavedPreset({ id: preset._id })
+                        .then(() => {
+                          toast.success("Preset removed.");
+                        })
+                        .catch((err: unknown) => {
+                          toast.error(err instanceof Error ? err.message : "Could not remove preset.");
+                        });
                     }}
                   >
                     Remove

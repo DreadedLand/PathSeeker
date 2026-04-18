@@ -16,9 +16,10 @@ export default defineSchema({
   }).index("by_token", ["tokenIdentifier"]),
 
   tasks: defineTable({
+    userToken: v.string(),
     title: v.string(),
     description: v.string(),
-  }),
+  }).index("by_user", ["userToken"]),
 
   routeHistory: defineTable({
     userToken: v.string(),

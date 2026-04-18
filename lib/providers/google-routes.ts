@@ -158,16 +158,14 @@ function extractGoogleErrorMessage(error: GoogleErrorShape) {
       }
 
       if (payload.error?.message) {
-        return payload.error.message;
+        return "Google Routes API request failed.";
       }
     } catch {
-      if (error.details) {
-        return detail;
-      }
+      // Ignore JSON parse failures and fall through to generic message.
     }
   }
 
-  return error.message ?? "Google Routes API request failed.";
+  return "Google Routes API request failed.";
 }
 
 async function requestRouteCandidate(
@@ -244,6 +242,7 @@ export async function computeOptimizedRoute(
       throw error;
     }
 
+    console.error("[google-routes-upstream-error]", error);
     const message =
       error && typeof error === "object"
         ? extractGoogleErrorMessage(error as GoogleErrorShape)
