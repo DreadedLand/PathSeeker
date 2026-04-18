@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 
 export function SavedPlacesView() {
   const router = useRouter();
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const places = useQuery(api.pathseeker.listSavedPlaces);
   const addSavedPlace = useMutation(api.pathseeker.addSavedPlace);
   const removeSavedPlace = useMutation(api.pathseeker.removeSavedPlace);
@@ -23,6 +24,10 @@ export function SavedPlacesView() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isAuthenticated) {
+      toast.error("Authentication session is still loading. Please try again.");
+      return;
+    }
     setIsSaving(true);
 
     try {
@@ -71,6 +76,8 @@ export function SavedPlacesView() {
                 type="submit"
                 disabled={
                   isSaving ||
+                  isAuthLoading ||
+                  !isAuthenticated ||
                   name.trim().length === 0 ||
                   address.trim().length === 0
                 }
@@ -116,6 +123,7 @@ export function SavedPlacesView() {
                   </Button>
                   <Button
                     variant="outline"
+                    disabled={isAuthLoading || !isAuthenticated}
                     onClick={() => {
                       void removeSavedPlace({ id: place._id })
                         .then(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
@@ -85,6 +85,7 @@ export function TripPlanner() {
   const [isPlanning, setIsPlanning] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const { isAuthenticated: isConvexAuthenticated, isLoading: isConvexAuthLoading } = useConvexAuth();
   const addHistory = useMutation(api.pathseeker.addHistory);
   const savedPlaces = useQuery(api.pathseeker.listSavedPlaces);
 
@@ -272,16 +273,18 @@ export function TripPlanner() {
       const routeResult = payload as RoutePlanResponse;
       setResult(routeResult);
       toast.success("Route planned.");
-      await addHistory({
-        prompt: prompt.trim(),
-        homeAddress: homeAddress.trim().length > 0 ? homeAddress.trim() : undefined,
-        parsedStops: routeResult.parsed.stops,
-        deadline: routeResult.parsed.deadline,
-        orderedStops: routeResult.route.orderedStops,
-        totalDurationText: routeResult.route.totalDurationText,
-        arrivalEstimate: routeResult.route.arrivalEstimate,
-        originLabel: routeResult.route.originLabel,
-      });
+      if (isConvexAuthenticated) {
+        await addHistory({
+          prompt: prompt.trim(),
+          homeAddress: homeAddress.trim().length > 0 ? homeAddress.trim() : undefined,
+          parsedStops: routeResult.parsed.stops,
+          deadline: routeResult.parsed.deadline,
+          orderedStops: routeResult.route.orderedStops,
+          totalDurationText: routeResult.route.totalDurationText,
+          arrivalEstimate: routeResult.route.arrivalEstimate,
+          originLabel: routeResult.route.originLabel,
+        });
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not plan route.");
     } finally {
@@ -328,7 +331,7 @@ export function TripPlanner() {
                     onClick={() => { void requestCurrentLocation(); }}
                     disabled={isLocating || isPlanning || isTranscribing}
                   >
-                    {isLocating ? "Getting Location..." : currentLocation ? "✓ Location Ready" : "Use Current Location"}
+                    {isLocating ? "Getting Location..." : currentLocation ? "Location Ready" : "Use Current Location"}
                   </Button>
                 </div>
               </div>
@@ -359,7 +362,13 @@ export function TripPlanner() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isPlanning || isTranscribing || isLocating || prompt.trim().length === 0}
+                  disabled={
+                    isPlanning ||
+                    isTranscribing ||
+                    isLocating ||
+                    isConvexAuthLoading ||
+                    prompt.trim().length === 0
+                  }
                   className="flex-1 sm:flex-none"
                 >
                   {isPlanning ? (

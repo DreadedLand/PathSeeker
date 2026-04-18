@@ -52,7 +52,10 @@ export const addHistory = mutation({
     originLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
     const prompt = args.prompt.trim();
 
     if (!prompt || prompt.length > MAX_PROMPT_LENGTH) {

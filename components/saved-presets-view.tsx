@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 
 import { api } from "@/convex/_generated/api";
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 
 export function SavedPresetsView() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const presets = useQuery(api.pathseeker.listSavedPresets);
   const addSavedPreset = useMutation(api.pathseeker.addSavedPreset);
   const removeSavedPreset = useMutation(api.pathseeker.removeSavedPreset);
@@ -24,6 +25,10 @@ export function SavedPresetsView() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isAuthenticated) {
+      toast.error("Authentication session is still loading. Please try again.");
+      return;
+    }
     setIsSaving(true);
 
     try {
@@ -74,6 +79,8 @@ export function SavedPresetsView() {
                 type="submit"
                 disabled={
                   isSaving ||
+                  isAuthLoading ||
+                  !isAuthenticated ||
                   name.trim().length === 0 ||
                   prompt.trim().length === 0
                 }
@@ -118,6 +125,7 @@ export function SavedPresetsView() {
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={isAuthLoading || !isAuthenticated}
                     onClick={() => {
                       void removeSavedPreset({ id: preset._id })
                         .then(() => {
