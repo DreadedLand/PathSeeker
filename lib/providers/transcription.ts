@@ -1,162 +1,152 @@
+import { openai } from "@ai-sdk/openai";
+import { NoTranscriptGeneratedError, experimental_transcribe as transcribe } from "ai";
+
 import { ApiRouteError } from "@/lib/api-response";
 import { getAiTranscriptionConfig } from "@/lib/env";
 
-type OpenAITranscriptionErrorPayload = {
-  error?: {
+type UpstreamErrorLike = {
+  code?: string;
+  cause?: {
     code?: string;
-    message?: string;
-    param?: string;
-    type?: string;
   };
+  data?: {
+    error?: {
+      code?: string;
+      message?: string;
+    };
+  };
+  message?: string;
+  responseBody?: string;
+  statusCode?: number;
 };
-
-class TranscriptionUpstreamError extends Error {
-  readonly statusCode: number;
-  readonly code: string | undefined;
-
-  constructor(statusCode: number, message: string, code?: string) {
-    super(message);
-    this.name = "TranscriptionUpstreamError";
-    this.statusCode = statusCode;
-    this.code = code;
-  }
-}
 
 function normalizeModelName(modelName: string) {
   const normalized = modelName.trim();
-  if (!normalized) return "gpt-4o-mini-transcribe";
+  if (!normalized) return "whisper-1";
   if (!normalized.includes("/")) return normalized;
+
   const [, ...rest] = normalized.split("/");
   const candidate = rest.join("/").trim();
-  return candidate || "gpt-4o-mini-transcribe";
+  return candidate || "whisper-1";
 }
 
-function normalizeMimeType(mimeType: string) {
-  const normalized = mimeType.split(";")[0].trim().toLowerCase();
-  if (!normalized) return "audio/webm";
-  return normalized;
+function shouldPreferWhisper(file: File) {
+  const mimeType = file.type.toLowerCase();
+  return mimeType.startsWith("audio/webm") || mimeType.startsWith("audio/ogg");
 }
 
-function extensionForMimeType(mimeType: string) {
-  if (mimeType.includes("wav")) return "wav";
-  if (mimeType.includes("mpeg") || mimeType.includes("mp3")) return "mp3";
-  if (mimeType.includes("mp4") || mimeType.includes("m4a")) return "mp4";
-  if (mimeType.includes("ogg")) return "ogg";
-  return "webm";
+function getUpstreamStatusCode(error: unknown) {
+  if (!error || typeof error !== "object") return undefined;
+  return "statusCode" in error && typeof error.statusCode === "number"
+    ? error.statusCode
+    : undefined;
+}
+
+function getUpstreamCode(error: unknown) {
+  if (!error || typeof error !== "object") return undefined;
+
+  const candidate = error as UpstreamErrorLike;
+  return (
+    candidate.code ??
+    candidate.cause?.code ??
+    candidate.data?.error?.code
+  )?.toLowerCase();
+}
+
+function getUpstreamMessage(error: unknown) {
+  if (!error || typeof error !== "object") return undefined;
+
+  const candidate = error as UpstreamErrorLike;
+  return (
+    candidate.data?.error?.message ??
+    candidate.message ??
+    candidate.responseBody
+  )?.toLowerCase();
 }
 
 function shouldRetryWithWhisper(error: unknown) {
-  if (!(error instanceof TranscriptionUpstreamError)) return false;
-  const message = error.message.toLowerCase();
-  const code = error.code?.toLowerCase() ?? "";
+  if (NoTranscriptGeneratedError.isInstance(error)) {
+    return true;
+  }
+
+  const statusCode = getUpstreamStatusCode(error);
+  const code = getUpstreamCode(error) ?? "";
+  const message = getUpstreamMessage(error) ?? "";
 
   return (
-    error.statusCode === 400 &&
+    statusCode === 400 &&
     (code === "unsupported_format" ||
       code === "invalid_value" ||
       message.includes("unsupported") ||
-      message.includes("corrupted"))
+      message.includes("corrupted") ||
+      message.includes("format"))
   );
 }
 
-async function requestTranscription(params: {
-  apiKey: string;
-  file: File;
-  modelName: string;
-  abortSignal: AbortSignal;
-}) {
-  const { apiKey, file, modelName, abortSignal } = params;
-  const mimeType = normalizeMimeType(file.type);
-  const extension = extensionForMimeType(mimeType);
-  const hasName = typeof file.name === "string" && file.name.trim().length > 0;
-  const normalizedFile = hasName
-    ? file
-    : new File([await file.arrayBuffer()], `recording.${extension}`, { type: mimeType });
-
-  const formData = new FormData();
-  if (hasName) {
-    formData.append("file", normalizedFile);
-  } else {
-    formData.append("file", normalizedFile, normalizedFile.name);
-  }
-  formData.append("model", modelName);
-  formData.append("response_format", "json");
-
-  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: formData,
-    signal: abortSignal,
+async function transcribeWithModel(file: File, modelName: string) {
+  const audioBytes = new Uint8Array(await file.arrayBuffer());
+  const result = await transcribe({
+    model: openai.transcription(modelName),
+    audio: audioBytes,
+    abortSignal: AbortSignal.timeout(30_000),
   });
 
-  const payload = (await response
-    .json()
-    .catch(() => ({}))) as OpenAITranscriptionErrorPayload & { text?: string };
-
-  if (!response.ok) {
-    throw new TranscriptionUpstreamError(
-      response.status,
-      payload.error?.message ?? "Audio transcription request failed.",
-      payload.error?.code,
-    );
-  }
-
-  const transcript = payload.text?.trim();
-  if (!transcript) {
-    throw new ApiRouteError(502, "UPSTREAM_ERROR", "No transcript returned by the transcription model.");
-  }
-
-  return transcript;
+  return result.text.trim();
 }
 
 export async function transcribeAudio(file: File): Promise<string> {
   const config = getAiTranscriptionConfig();
-  const primaryModel = normalizeModelName(config.model);
+  const configuredModel = normalizeModelName(config.model);
   const fallbackModel = "whisper-1";
+  const primaryModel = shouldPreferWhisper(file) ? fallbackModel : configuredModel;
 
   try {
     try {
-      return await requestTranscription({
-        apiKey: config.apiKey,
-        file,
-        modelName: primaryModel,
-        abortSignal: AbortSignal.timeout(30_000),
-      });
+      return await transcribeWithModel(file, primaryModel);
     } catch (error) {
       if (primaryModel !== fallbackModel && shouldRetryWithWhisper(error)) {
-        console.warn("[transcription-fallback] primary model rejected audio, retrying with whisper-1");
-        return await requestTranscription({
-          apiKey: config.apiKey,
-          file,
-          modelName: fallbackModel,
-          abortSignal: AbortSignal.timeout(30_000),
+        console.warn("[transcription-fallback] primary model failed, retrying with whisper-1", {
+          fileSize: file.size,
+          mimeType: file.type,
+          model: primaryModel,
         });
+
+        return await transcribeWithModel(file, fallbackModel);
       }
+
       throw error;
     }
   } catch (error) {
-    if (error instanceof ApiRouteError) {
-      throw error;
+    const statusCode = getUpstreamStatusCode(error);
+    const upstreamCode = getUpstreamCode(error);
+    const upstreamMessage = getUpstreamMessage(error);
+
+    console.error("[transcription-upstream-error]", {
+      fileSize: file.size,
+      mimeType: file.type,
+      model: primaryModel,
+      statusCode,
+      code: upstreamCode,
+      message: upstreamMessage,
+    });
+
+    if (NoTranscriptGeneratedError.isInstance(error)) {
+      throw new ApiRouteError(
+        502,
+        "UPSTREAM_ERROR",
+        "Transcription returned no text. Please try again.",
+      );
     }
 
-    if (error instanceof TranscriptionUpstreamError) {
-      console.error("[transcription-upstream-error]", {
-        statusCode: error.statusCode,
-        code: error.code,
-        message: error.message,
-      });
-
-      if (error.statusCode === 400 && error.code === "invalid_value") {
-        throw new ApiRouteError(
-          400,
-          "BAD_REQUEST",
-          "Audio could not be decoded. Please try recording again.",
-        );
-      }
-    } else {
-      console.error("[transcription-upstream-error]", error);
+    if (
+      statusCode === 400 &&
+      (upstreamCode === "invalid_value" || upstreamCode === "unsupported_format")
+    ) {
+      throw new ApiRouteError(
+        400,
+        "BAD_REQUEST",
+        "Audio could not be decoded. Please try recording again.",
+      );
     }
 
     throw new ApiRouteError(502, "UPSTREAM_ERROR", "Audio transcription failed.");
