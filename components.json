@@ -21,5 +21,7 @@
   },
   "menuColor": "default-translucent",
   "menuAccent": "subtle",
-  "registries": {}
+  "registries": {
+    "@tailark": "https://tailark.com/r/{name}.json"
+  }
 }
