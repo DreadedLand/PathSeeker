@@ -85,7 +85,7 @@ export function TripPlanner() {
   const [isPlanning, setIsPlanning] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const { isAuthenticated: isConvexAuthenticated, isLoading: isConvexAuthLoading } = useConvexAuth();
+  const { isLoading: isConvexAuthLoading } = useConvexAuth();
   const addHistory = useMutation(api.pathseeker.addHistory);
   const savedPlaces = useQuery(api.pathseeker.listSavedPlaces);
 
@@ -273,7 +273,7 @@ export function TripPlanner() {
       const routeResult = payload as RoutePlanResponse;
       setResult(routeResult);
       toast.success("Route planned.");
-      if (isConvexAuthenticated) {
+      try {
         await addHistory({
           prompt: prompt.trim(),
           homeAddress: homeAddress.trim().length > 0 ? homeAddress.trim() : undefined,
@@ -284,6 +284,12 @@ export function TripPlanner() {
           arrivalEstimate: routeResult.route.arrivalEstimate,
           originLabel: routeResult.route.originLabel,
         });
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? `Route planned, but history could not be saved: ${error.message}`
+            : "Route planned, but history could not be saved.",
+        );
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not plan route.");

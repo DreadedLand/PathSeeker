@@ -8,12 +8,23 @@ const MAX_PRESET_NAME_LENGTH = 80;
 const MAX_ROUTE_STOPS = 12;
 const MAX_STOP_LENGTH = 160;
 
-function hasInvalidStops(stops: string[]) {
-  return (
-    stops.length === 0 ||
-    stops.length > MAX_ROUTE_STOPS ||
-    stops.some((stop) => stop.trim().length === 0 || stop.length > MAX_STOP_LENGTH)
-  );
+function normalizeBoundedString(value: string, maxLength: number) {
+  return value.trim().slice(0, maxLength);
+}
+
+function normalizeOptionalBoundedString(value: string | undefined, maxLength: number) {
+  if (!value) {
+    return undefined;
+  }
+  const normalized = normalizeBoundedString(value, maxLength);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeStops(stops: string[]) {
+  return stops
+    .map((stop) => normalizeBoundedString(stop, MAX_STOP_LENGTH))
+    .filter((stop) => stop.length > 0)
+    .slice(0, MAX_ROUTE_STOPS);
 }
 
 async function requireIdentity(ctx: { auth: { getUserIdentity: () => Promise<{ tokenIdentifier: string } | null> } }) {
@@ -52,44 +63,33 @@ export const addHistory = mutation({
     originLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-    const prompt = args.prompt.trim();
+    const identity = await requireIdentity(ctx);
+    const prompt = normalizeBoundedString(args.prompt, MAX_PROMPT_LENGTH);
+    if (!prompt) throw new Error("Prompt is required.");
 
-    if (!prompt || prompt.length > MAX_PROMPT_LENGTH) {
-      throw new Error("Prompt is required and must be at most 1200 characters.");
+    const homeAddress = normalizeOptionalBoundedString(args.homeAddress, MAX_ADDRESS_LENGTH);
+    const parsedStops = normalizeStops(args.parsedStops);
+    const orderedStops = normalizeStops(args.orderedStops);
+
+    if (parsedStops.length === 0 || orderedStops.length === 0) {
+      throw new Error("At least one valid stop is required.");
     }
-    if (args.homeAddress && args.homeAddress.length > MAX_ADDRESS_LENGTH) {
-      throw new Error("Home address must be at most 240 characters.");
-    }
-    if (hasInvalidStops(args.parsedStops) || hasInvalidStops(args.orderedStops)) {
-      throw new Error("Stops must be non-empty and within length limits.");
-    }
-    if (args.deadline && args.deadline.length > 80) {
-      throw new Error("Deadline must be at most 80 characters.");
-    }
-    if (args.totalDurationText.length > 80) {
-      throw new Error("Duration text must be at most 80 characters.");
-    }
-    if (args.arrivalEstimate && args.arrivalEstimate.length > 120) {
-      throw new Error("Arrival estimate must be at most 120 characters.");
-    }
-    if (args.originLabel && args.originLabel.length > MAX_STOP_LENGTH) {
-      throw new Error("Origin label must be at most 160 characters.");
-    }
+
+    const deadline = normalizeOptionalBoundedString(args.deadline, 80);
+    const totalDurationText = normalizeBoundedString(args.totalDurationText, 80);
+    const arrivalEstimate = normalizeOptionalBoundedString(args.arrivalEstimate, 120);
+    const originLabel = normalizeOptionalBoundedString(args.originLabel, MAX_STOP_LENGTH);
 
     return await ctx.db.insert("routeHistory", {
       userToken: identity.tokenIdentifier,
       prompt,
-      homeAddress: args.homeAddress,
-      parsedStops: args.parsedStops,
-      deadline: args.deadline,
-      orderedStops: args.orderedStops,
-      totalDurationText: args.totalDurationText,
-      arrivalEstimate: args.arrivalEstimate,
-      originLabel: args.originLabel,
+      homeAddress,
+      parsedStops,
+      deadline,
+      orderedStops,
+      totalDurationText,
+      arrivalEstimate,
+      originLabel,
     });
   },
 });

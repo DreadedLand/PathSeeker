@@ -7,6 +7,11 @@ export default {
       applicationID: "convex",
     },
     {
+      // Production Clerk custom domain issuer.
+      domain: "https://clerk.path.egeuysal.com",
+      applicationID: "convex",
+    },
+    {
       // Keep old issuer temporarily to avoid breaking older sessions/environments.
       domain: "https://absolute-possum-33.clerk.accounts.dev",
       applicationID: "convex",
