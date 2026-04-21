@@ -53,7 +53,7 @@ export async function extractTripDetails(prompt: string): Promise<TripParseResul
   const parsed = tripParseResultSchema.safeParse(normalizeTripDetails(result.object));
 
   if (!parsed.success) {
-    throw new ApiRouteError(400, "VALIDATION_ERROR", "Could not parse enough destinations.");
+    throw new ApiRouteError(400, "VALIDATION_ERROR", "Could not parse enough destinations. Try adding a few more places.");
   }
 
   return parsed.data;
